@@ -190,6 +190,7 @@ int32_t si_sign_ipa(SignSession *session,
                     const char *pairing_file_path,
                     int32_t memory_limit,
                     int32_t app_group,
+                    int32_t modify_bundle_id,
                     char **out_signed_path,
                     char **out_error);
 
