@@ -55,6 +55,7 @@ struct SettingsView: View {
                 accountSection
                 languageSection
                 soundsSection
+                bundleIDSection
                 tunnelSection
                 developerModeSection
                 downloadsSection
@@ -204,6 +205,18 @@ struct SettingsView: View {
             Toggle(L("Sound effects"), isOn: $soundEffects)
         } header: {
             Text(L("Sounds"))
+        }
+    }
+
+    // MARK: Bundle ID
+
+    private var bundleIDSection: some View {
+        Section {
+            Toggle(L("Bundle ID Modification"), isOn: $engine.modifyBundleID)
+        } header: {
+            Text(L("Signing"))
+        } footer: {
+            Text(L("When enabled, SideInstaller appends your Team ID to Bundle IDs. When disabled, it tries to keep the IPA's original Bundle IDs. Apple must allow your team to use those identifiers, or signing will fail."))
         }
     }
 
