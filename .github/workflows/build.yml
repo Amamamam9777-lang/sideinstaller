@@ -1,0 +1,121 @@
+name: Build SideInstaller IPA
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "App version, e.g. 1.6.1"
+        required: true
+        type: string
+        default: "1.6.1"
+      build_number:
+        description: "Build number (leave blank to use the project default)"
+        required: false
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sideinstaller-ipa-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  XCODE_VERSION: "27.1"
+  HOMEBREW_NO_AUTO_UPDATE: "1"
+  HOMEBREW_NO_INSTALL_CLEANUP: "1"
+  MIN_IOS_SDK: "27.1"
+
+jobs:
+  build:
+    name: Build unsigned IPA
+    runs-on: xcode-27
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Select Xcode 27.1
+        shell: bash
+        run: |
+          set -euo pipefail
+          app=""
+          for candidate in "/Applications/Xcode_${XCODE_VERSION}.app" /Applications/Xcode_"${XCODE_VERSION}"_*.app; do
+            if [[ -d "$candidate" ]]; then
+              app="$candidate"
+              break
+            fi
+          done
+          if [[ -z "$app" ]]; then
+            echo "::error::Xcode ${XCODE_VERSION} was not found on this runner."
+            ls -d /Applications/Xcode*.app || true
+            exit 1
+          fi
+          echo "DEVELOPER_DIR=$app/Contents/Developer" >> "$GITHUB_ENV"
+          DEVELOPER_DIR="$app/Contents/Developer" xcodebuild -version
+
+      - name: Install build tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! command -v xcodegen >/dev/null 2>&1; then
+            brew install xcodegen
+          fi
+          if ! command -v rustup >/dev/null 2>&1; then
+            echo "::error::Rust/rustup is not available on this runner."
+            exit 1
+          fi
+          rustup target add aarch64-apple-ios
+          echo "xcodegen: $(xcodegen --version)"
+          echo "rustc: $(rustc --version)"
+          echo "cargo: $(cargo --version)"
+
+      - name: Cache Rust dependencies and build output
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            rust-core/target
+          key: sideinstaller-cargo-ios-${{ runner.os }}-${{ hashFiles('rust-core/Cargo.lock') }}
+          restore-keys: |
+            sideinstaller-cargo-ios-${{ runner.os }}-
+
+      - name: Build IPA
+        shell: bash
+        env:
+          VERSION: ${{ inputs.version }}
+          BUILD_NUMBER: ${{ inputs.build_number }}
+          OUTPUT: ${{ runner.temp }}/ipa/SideInstaller.ipa
+          DERIVED_DATA: ${{ runner.temp }}/DerivedData
+          REBUILD_RUST: "1"
+          MIN_IOS_SDK: "27.1"
+        run: |
+          set -euo pipefail
+          bash scripts/build-ipa.sh
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SideInstaller-${{ inputs.version }}-unsigned
+          path: ${{ runner.temp }}/ipa/SideInstaller.ipa
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Build summary
+        shell: bash
+        env:
+          VERSION: ${{ inputs.version }}
+          IPA: ${{ runner.temp }}/ipa/SideInstaller.ipa
+        run: |
+          {
+            echo "## SideInstaller IPA build complete"
+            echo
+            echo "- Version: $VERSION"
+            echo "- Artifact: SideInstaller-${VERSION}-unsigned"
+            echo "- Signing: unsigned (sign it with your own signing method)"
+            echo "- SHA-256: $(shasum -a 256 "$IPA" | awk '{print $1}')"
+          } >> "$GITHUB_STEP_SUMMARY"
