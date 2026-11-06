@@ -124,6 +124,7 @@ impl Sideloader {
         app_group: bool,
         register_device: Option<(&str, &str)>,
         pairing_file: Option<&[u8]>,
+        modify_bundle_id: bool,
     ) -> Result<(PathBuf, Option<SpecialApp>), Report> {
         let team = match team {
             Some(t) => t,
@@ -185,7 +186,11 @@ impl Sideloader {
 
             let main_bundle_id = app.main_bundle_id()?;
             let main_app_name = app.main_app_name()?;
-            let main_app_id_str = format!("{}.{}", main_bundle_id, team.team_id);
+            let main_app_id_str = if modify_bundle_id {
+                format!("{}.{}", main_bundle_id, team.team_id)
+            } else {
+                main_bundle_id.clone()
+            };
             app.update_bundle_id(&main_bundle_id, &main_app_id_str)?;
 
             let group_identifier = format!(
@@ -330,6 +335,7 @@ impl Sideloader {
                 true,
                 Some((&device_info.name, &device_info.udid)),
                 pairing_file,
+                true,
             )
             .await?;
 
