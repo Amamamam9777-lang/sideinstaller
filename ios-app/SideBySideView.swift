@@ -1256,7 +1256,11 @@ final class SideBySideManager: ObservableObject {
         // Memory Limit: SideInstaller has no use for it, and the SideStore
         // builds re-register their App IDs without it. Every app gets its app
         // group, as on the Install tab.
-        let rc = si_sign_ipa(session, ipa, udid, deviceName, nil, 0, 1, &signed, &error)
+        // Match the Bundle ID Modification setting used by the main Install flow.
+        // Default to true so existing installs keep the previous Team ID suffix behavior.
+        let modifyBundleID = (UserDefaults.standard.object(forKey: Engine.modifyBundleIDKey) as? Bool) ?? true
+        let rc = si_sign_ipa(session, ipa, udid, deviceName, nil, 0, 1,
+                             modifyBundleID ? 1 : 0, &signed, &error)
         if rc == 0 {
             let path = signed.map { String(cString: $0) } ?? ""
             signed.map { si_string_free($0) }
