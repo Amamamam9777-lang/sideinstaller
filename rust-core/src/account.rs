@@ -331,6 +331,7 @@ pub unsafe fn sign_ipa(
     pairing_file_path: *const c_char,
     memory_limit: MemoryLimit,
     app_group: bool,
+    modify_bundle_id: bool,
     out_signed_path: *mut *mut c_char,
     out_error: *mut *mut c_char,
 ) -> i32 {
@@ -374,6 +375,7 @@ pub unsafe fn sign_ipa(
                     app_group,
                     device,
                     pairing_file.as_deref(),
+                    modify_bundle_id,
                 )
                 .await
                 .map_err(|e| {

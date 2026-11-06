@@ -210,6 +210,7 @@ pub unsafe extern "C" fn si_sign_ipa(
     pairing_file_path: *const c_char,
     memory_limit: i32,
     app_group: i32,
+    modify_bundle_id: i32,
     out_signed_path: *mut *mut c_char,
     out_error: *mut *mut c_char,
 ) -> i32 {
@@ -225,6 +226,7 @@ pub unsafe extern "C" fn si_sign_ipa(
             _ => MemoryLimit::Off,
         },
         app_group != 0,
+        modify_bundle_id != 0,
         out_signed_path,
         out_error,
     )
