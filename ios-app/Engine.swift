@@ -192,6 +192,20 @@ final class Engine: ObservableObject {
     /// carries over.
     static let autoStartVPNKey = "autoStartLocalDevVPN"
 
+    /// Keep the IPA's original Bundle ID instead of appending the signing Team ID.
+    /// Apple only permits this when the developer team can provision that exact ID.
+    @Published var modifyBundleID: Bool =
+        (UserDefaults.standard.object(forKey: Engine.modifyBundleIDKey) as? Bool) ?? true {
+        didSet {
+            guard modifyBundleID != oldValue else { return }
+            UserDefaults.standard.set(modifyBundleID, forKey: Engine.modifyBundleIDKey)
+            log(modifyBundleID
+                ? "Bundle ID modification enabled: Team ID suffix will be added."
+                : "Bundle ID modification disabled: original Bundle IDs will be used; Apple may reject signing if they are not available to this team.")
+        }
+    }
+    static let modifyBundleIDKey = "modifyBundleID"
+
     /// Settings › Activity Log › Verbose logging: idevice's DEBUG lines, every
     /// plist, XPC message and pairing step exchanged with iOS, go into the log.
     /// Off by default, since they quickly fill it.
@@ -2110,7 +2124,7 @@ final class Engine: ObservableObject {
         var error: UnsafeMutablePointer<CChar>?
         // Memory limit: 1 = required, 2 = where it's safe (see sideinstaller.h).
         let rc = si_sign_ipa(session, ipa, udid, deviceName, pairingFilePath,
-                             forMadeira ? 1 : 2, forMadeira ? 0 : 1, &signed, &error)
+                             forMadeira ? 1 : 2, forMadeira ? 0 : 1, modifyBundleID ? 1 : 0, &signed, &error)
         if rc == 0 {
             let path = signed.map { String(cString: $0) } ?? ""
             signed.map { si_string_free($0) }
